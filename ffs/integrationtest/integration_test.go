@@ -1350,7 +1350,7 @@ func newAPI(t *testing.T, numMiners int) (*httpapi.HttpApi, *apistruct.FullNodeS
 }
 
 func createIPFS(t *testing.T) (*httpapi.HttpApi, string) {
-	ipfsDocker, cls := tests.LaunchIPFSDocker()
+	ipfsDocker, cls := tests.LaunchIPFSDocker(t)
 	t.Cleanup(func() { cls() })
 	ipfsAddr := util.MustParseAddr("/ip4/127.0.0.1/tcp/" + ipfsDocker.GetPort("5001/tcp"))
 	ipfs, err := httpapi.NewApi(ipfsAddr)

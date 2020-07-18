@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
+	"github.com/stretchr/testify/require"
 	"github.com/textileio/powergate/lotus"
 	"github.com/textileio/powergate/util"
 )
@@ -20,9 +21,7 @@ import (
 // LaunchDevnetDocker launches the devnet docker image.
 func LaunchDevnetDocker(t *testing.T, numMiners int, ipfsMaddr string, mountVolumes bool) *dockertest.Resource {
 	pool, err := dockertest.NewPool("")
-	if err != nil {
-		panic(fmt.Sprintf("couldn't create ipfs-pool: %s", err))
-	}
+	require.NoError(t, err)
 	envs := []string{
 		devnetEnv("NUMMINERS", strconv.Itoa(numMiners)),
 		devnetEnv("SPEED", "500"),
@@ -37,17 +36,13 @@ func LaunchDevnetDocker(t *testing.T, numMiners int, ipfsMaddr string, mountVolu
 	repository := "textile/lotus-devnet"
 	tag := "butterfly-v7.10.0-3"
 	lotusDevnet, err := pool.RunWithOptions(&dockertest.RunOptions{Repository: repository, Tag: tag, Env: envs, Mounts: mounts})
-	if err != nil {
-		panic(fmt.Sprintf("couldn't run lotus-devnet container: %s", err))
-	}
-	if err := lotusDevnet.Expire(180); err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
+	err = lotusDevnet.Expire(180)
+	require.NoError(t, err)
 	time.Sleep(time.Second * time.Duration(2+numMiners))
 	t.Cleanup(func() {
-		if err := pool.Purge(lotusDevnet); err != nil {
-			panic(fmt.Sprintf("couldn't purge lotus-devnet from docker pool: %s", err))
-		}
+		err = pool.Purge(lotusDevnet)
+		require.NoError(t, err)
 	})
 	debug := false
 	if debug {
@@ -66,9 +61,8 @@ func LaunchDevnetDocker(t *testing.T, numMiners int, ipfsMaddr string, mountVolu
 				OutputStream: os.Stdout,
 			}
 
-			if err := pool.Client.Logs(opts); err != nil {
-				panic(err)
-			}
+			err = pool.Client.Logs(opts)
+			require.NoError(t, err)
 		}()
 	}
 	return lotusDevnet
@@ -78,9 +72,7 @@ func LaunchDevnetDocker(t *testing.T, numMiners int, ipfsMaddr string, mountVolu
 func CreateLocalDevnetWithIPFS(t *testing.T, numMiners int, ipfsMaddr string, mountVolumes bool) (*apistruct.FullNodeStruct, address.Address, []address.Address) {
 	lotusDevnet := LaunchDevnetDocker(t, numMiners, ipfsMaddr, mountVolumes)
 	c, cls, err := lotus.New(util.MustParseAddr("/ip4/127.0.0.1/tcp/"+lotusDevnet.GetPort("7777/tcp")), "", 1)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 	t.Cleanup(func() { cls() })
 	ctx := context.Background()
 	addr, err := c.WalletDefaultAddress(ctx)
